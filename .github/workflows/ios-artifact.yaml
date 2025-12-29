@@ -95,7 +95,7 @@ jobs:
           echo "Files in build folder:"
           ls -la build
 
-      # 9. Upload IPA artifact
+      # 9. Upload IPA Artifact
       - uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
