@@ -27,7 +27,7 @@ jobs:
         ruby-version: "3.2"
     - run: gem install cocoapods xcpretty
 
-    # 4. Install Pods
+    # 4. Pods
     - name: Install Pods
       working-directory: ios
       run: pod install --repo-update
@@ -35,7 +35,7 @@ jobs:
     # 5. Clean DerivedData
     - run: rm -rf ~/Library/Developer/Xcode/DerivedData
 
-    # 6. Import Distribution Certificate
+    # 6. Import Certificate
     - name: Import Apple Certificate
       run: |
         security create-keychain -p "" build.keychain
@@ -47,18 +47,15 @@ jobs:
         security import dist.p12 -k build.keychain -P "${{ secrets.IOS_CERT_PASSWORD }}" -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
 
-    # 7. Install & VALIDATE Provisioning Profile
+    # 7. Provisioning Profile
     - name: Install Provisioning Profile
       run: |
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
-
-        # Fail immediately if corrupted
         security cms -D -i profile.mobileprovision | grep UUID
-
         mv profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
-    # 8. Extract Bundle ID & Team ID (SAFE)
+    # 8. Extract IDs
     - name: Extract identifiers
       working-directory: ios
       run: |
@@ -67,21 +64,19 @@ jobs:
           -scheme alkhafji \
           -sdk iphoneos \
           -showBuildSettings \
-          | awk -F " = " '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' \
-          | head -n 1 | tr -d '\r')
+          | awk -F " = " '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' | head -n 1 | tr -d '\r')
 
         TEAM_ID=$(xcodebuild \
           -workspace alkhafji.xcworkspace \
           -scheme alkhafji \
           -sdk iphoneos \
           -showBuildSettings \
-          | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' \
-          | head -n 1 | tr -d '\r')
+          | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' | head -n 1 | tr -d '\r')
 
         echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
         echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
 
-    # 9. Generate ExportOptions.plist
+    # 9. ExportOptions
     - name: Generate ExportOptions.plist
       working-directory: ios
       run: |
@@ -97,6 +92,7 @@ jobs:
         xcodebuild archive \
           -workspace alkhafji.xcworkspace \
           -scheme alkhafji \
+          -sdk iphoneos \
           -configuration Release \
           -archivePath build/alkhafji.xcarchive \
           CODE_SIGN_STYLE=Manual \
@@ -115,7 +111,7 @@ jobs:
 
         ls -la build
 
-    # 12. Upload Artifact
+    # 12. Upload
     - uses: actions/upload-artifact@v4
       with:
         name: ios-ipa
