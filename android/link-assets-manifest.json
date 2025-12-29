@@ -1,0 +1,77 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/Charter-Black.woff",
+      "sha1": "45232d7de24f9c2521642344d4ada4f6ac96c869"
+    },
+    {
+      "path": "assets/fonts/Charter-Black.woff2",
+      "sha1": "1e2a1e615b9a27b8cbe90cbdfb6968eab456e776"
+    },
+    {
+      "path": "assets/fonts/Charter-BlackItalic.woff",
+      "sha1": "1ae516adf2179431306b3742f9417a4908ddf6b7"
+    },
+    {
+      "path": "assets/fonts/Charter-BlackItalic.woff2",
+      "sha1": "2aa06313b5f7af7eaea0d328f5e65fcbb760a588"
+    },
+    {
+      "path": "assets/fonts/Charter-Bold.woff",
+      "sha1": "77e409937e908fa29c52b212370455bf49fd620d"
+    },
+    {
+      "path": "assets/fonts/Charter-Bold.woff2",
+      "sha1": "d025d239002a455633dd40140a8a2cd3dd9a7ef9"
+    },
+    {
+      "path": "assets/fonts/Charter-BoldItalic.woff",
+      "sha1": "819fbdd29f12174d20b2045928f4ed6f3ff3ea87"
+    },
+    {
+      "path": "assets/fonts/Charter-BoldItalic.woff2",
+      "sha1": "3b7907c042d701aeb00cf62e39bf8d989b8036fa"
+    },
+    {
+      "path": "assets/fonts/Charter-Italic.woff",
+      "sha1": "39066481b2af013ab926fb1bf9edb8b604aa904f"
+    },
+    {
+      "path": "assets/fonts/Charter-Italic.woff2",
+      "sha1": "ccfc0c07fb5ff8901b280230da206aa17f02269a"
+    },
+    {
+      "path": "assets/fonts/Charter-Roman.woff",
+      "sha1": "dfb00756e6757cee6b0d1ddc3a8d281820cc382b"
+    },
+    {
+      "path": "assets/fonts/Charter-Roman.woff2",
+      "sha1": "64ecb38b68ec8bce7e084f6aa94e17a32389b96c"
+    },
+    {
+      "path": "assets/fonts/Charter.otf",
+      "sha1": "02b94faf5e60e199e7488427e5e1915f5926e6f6"
+    },
+    {
+      "path": "assets/fonts/Sakkal Majalla.otf",
+      "sha1": "a8b866ac34db9584a1bc89b090e4676d0e24cb4e"
+    },
+    {
+      "path": "assets/fonts/SakkalMajalla-Bold.woff",
+      "sha1": "11113d6b0cf06be6216b909b31a0f5b829132704"
+    },
+    {
+      "path": "assets/fonts/SakkalMajalla-Bold.woff2",
+      "sha1": "d7a138dfe428a10df15c9663c4425e5f3f0893b0"
+    },
+    {
+      "path": "assets/fonts/SakkalMajalla.woff",
+      "sha1": "fef6d1bd5b63c3a2c034857e76c98937b7f00ca3"
+    },
+    {
+      "path": "assets/fonts/SakkalMajalla.woff2",
+      "sha1": "b1546b81856a91ba88e303dd44e01ad8660acfca"
+    }
+  ]
+}

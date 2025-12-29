@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDCQ5x-RbI7uSUJfYcXuZHhElamfuhg5Dc</string>
+	<key>GCM_SENDER_ID</key>
+	<string>162810614857</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>alkhafji</string>
+	<key>PROJECT_ID</key>
+	<string>al-khafji-react-native</string>
+	<key>STORAGE_BUCKET</key>
+	<string>al-khafji-react-native.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:162810614857:ios:c9d9437e25217d039d5b98</string>
+</dict>
+</plist>

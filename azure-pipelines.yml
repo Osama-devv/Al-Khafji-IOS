@@ -1,0 +1,70 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- Release-V3
+
+pool:
+  vmImage: windows-latest
+
+steps:
+  # Download and Extract Oracle JDK 17.0.12
+  - task: PowerShell@2
+    displayName: 'Download and Set JAVA_HOME for Adoptium JDK 17.0.12'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $jdkUrl = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.12%2B7/OpenJDK17U-jdk_x64_windows_hotspot_17.0.12_7.zip"
+        $jdkZipPath = "$(Agent.TempDirectory)\jdk-17.zip"
+        $jdkExtractPath = "$(Agent.TempDirectory)\jdk-17"
+        
+        Invoke-WebRequest -Uri $jdkUrl -OutFile $jdkZipPath
+        Expand-Archive -Path $jdkZipPath -DestinationPath $jdkExtractPath
+        
+        $jdkDir = Get-ChildItem $jdkExtractPath | Where-Object {$_.PSIsContainer} | Select-Object -First 1
+        $env:JAVA_HOME = "$($jdkDir.FullName)"
+        Write-Host "##vso[task.setvariable variable=JAVA_HOME]$env:JAVA_HOME"
+        $env:Path = "$env:JAVA_HOME\bin;" + $env:Path
+        Write-Host "Updated PATH: $env:Path"
+
+  # Install Node.js (Required for React Native)
+  - task: NodeTool@0
+    inputs:
+      versionSpec: 'v20.x'
+    displayName: 'Install Node.js (LTS)'
+  - task: Npm@1
+    displayName: 'npm install'
+    inputs:
+      verbose: false
+
+   # Install dependencies
+  - script: |
+      npm install --legacy-peer-deps
+    displayName: 'Install Dependencies'
+
+  # Build the Android App Bundle (AAB)
+  - task: Gradle@3
+    displayName: 'Build AAB (Release)'
+    inputs:
+      gradleWrapperFile: 'android/gradlew'
+      workingDirectory: 'android'
+      gradleOptions: '-Xmx2048m -XX:MaxMetaspaceSize=512m'
+      tasks: bundleRelease
+
+
+  # Copy AAB to Staging
+  - task: CopyFiles@2
+    displayName: 'Copy AAB to Staging'
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/android/app'
+      Contents: '**/*.aab'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+  # Publish AAB as an Artifact
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish AAB Artifact'
+    inputs:
+      pathToPublish: '$(Build.ArtifactStagingDirectory)'
+      artifactName: 'android-aabs'

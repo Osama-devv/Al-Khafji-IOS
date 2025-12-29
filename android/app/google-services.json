@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "162810614857",
+    "project_id": "al-khafji-react-native",
+    "storage_bucket": "al-khafji-react-native.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162810614857:android:2b94642afe1eb2d29d5b98",
+        "android_client_info": {
+          "package_name": "sa.android.alkhafji"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2LD-HTKObCeLJt9yZiIOEMc-ZrUx-pXI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

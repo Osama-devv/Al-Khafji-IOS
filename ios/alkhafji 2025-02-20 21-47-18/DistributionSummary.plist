@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.alkhafji.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>1</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>6B865176B89CA0AA83DD568171D97931CE729584</string>
+				<key>dateExpires</key>
+				<string>14/02/2026</string>
+				<key>type</key>
+				<string>Apple Development</string>
+			</dict>
+			<key>embeddedBinaries</key>
+			<array>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>0.12.0</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>6B865176B89CA0AA83DD568171D97931CE729584</string>
+						<key>dateExpires</key>
+						<string>14/02/2026</string>
+						<key>type</key>
+						<string>Apple Development</string>
+					</dict>
+					<key>name</key>
+					<string>hermes.framework</string>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>AYP3EM5FKD</string>
+						<key>name</key>
+						<string>Abu Dhabi Tourism &amp; Culture Authority</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>0.12.0</string>
+				</dict>
+			</array>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>AYP3EM5FKD.com.alkhafji</string>
+				<key>com.apple.developer.team-identifier</key>
+				<string>AYP3EM5FKD</string>
+				<key>get-task-allow</key>
+				<true/>
+			</dict>
+			<key>name</key>
+			<string>com.alkhafji.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>e3e7abe9-c079-4d73-b66d-24a909d4af19</string>
+				<key>dateExpires</key>
+				<string>14/02/2026</string>
+				<key>name</key>
+				<string>iOS Team Provisioning Profile: com.alkhafji</string>
+			</dict>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>AYP3EM5FKD</string>
+				<key>name</key>
+				<string>Abu Dhabi Tourism &amp; Culture Authority</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>1.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>

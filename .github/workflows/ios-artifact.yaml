@@ -1,0 +1,103 @@
+name: iOS - Signed IPA Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    env:
+      CI: "true"
+
+    steps:
+      # 1. Checkout repository
+      - uses: actions/checkout@v4
+
+      # 2. Setup Node and install dependencies
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+      - run: npm ci --legacy-peer-deps
+
+      # 3. Setup Ruby and install CocoaPods & xcpretty
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+      - run: gem install cocoapods xcpretty
+
+      # 4. Install iOS Pods
+      - name: Install iOS Pods
+        working-directory: ios
+        run: |
+          pod install --repo-update
+
+      # 5. Clean DerivedData to avoid caching issues
+      - name: Clean DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData
+
+      # 6. Setup Keychain and import Apple Certificate
+      - name: Import Apple Distribution Certificate
+        run: |
+          security create-keychain -p "" build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -t 3600 -l build.keychain
+          security list-keychains -s build.keychain
+
+          echo "${{ secrets.IOS_CERT_BASE64 }}" | base64 --decode > ios_dist.p12
+
+          security import ios_dist.p12 \
+            -k build.keychain \
+            -P "${{ secrets.IOS_CERT_PASSWORD }}" \
+            -T /usr/bin/codesign
+
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "" build.keychain
+
+      # 7. Install Provisioning Profile
+      - name: Install Provisioning Profile
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/alkhafji-appstore-distribution-profile.mobileprovision
+
+      # 8. Build & Archive IPA (Manual Signing) with xcpretty
+      - name: Build & Archive IPA
+        working-directory: ios
+        run: |
+          set -e
+
+          mkdir -p build
+
+          echo "Cleaning project..."
+          xcodebuild clean \
+            -workspace alkhafji.xcworkspace \
+            -scheme alkhafji \
+            -configuration Release | xcpretty
+
+          echo "Archiving project..."
+          xcodebuild archive \
+            -workspace alkhafji.xcworkspace \
+            -scheme alkhafji \
+            -configuration Release \
+            -archivePath $PWD/build/alkhafji.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="alkhafji-appstore-distribution-profile" | xcpretty
+
+          echo "Exporting IPA..."
+          xcodebuild -exportArchive \
+            -archivePath $PWD/build/alkhafji.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath $PWD/build | xcpretty
+
+          echo "Files in build folder:"
+          ls -la build
+
+      # 9. Upload IPA artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ios/build/*.ipa
+          if-no-files-found: error
