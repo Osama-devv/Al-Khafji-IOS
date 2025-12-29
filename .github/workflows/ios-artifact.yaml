@@ -15,19 +15,19 @@ jobs:
     # 1. Checkout
     - uses: actions/checkout@v4
 
-    # 2. Node setup
+    # 2. Node
     - uses: actions/setup-node@v4
       with:
         node-version: "lts/*"
     - run: npm ci --legacy-peer-deps
 
-    # 3. Ruby + CocoaPods
+    # 3. Ruby + Pods
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: "3.2"
     - run: gem install cocoapods xcpretty
 
-    # 4. Pods
+    # 4. Install Pods
     - name: Install Pods
       working-directory: ios
       run: pod install --repo-update
@@ -47,33 +47,50 @@ jobs:
         security import dist.p12 -k build.keychain -P "${{ secrets.IOS_CERT_PASSWORD }}" -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
 
-    # 7. Install Provisioning Profile
+    # 7. Install & VALIDATE Provisioning Profile
     - name: Install Provisioning Profile
       run: |
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode \
-          > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
 
-    # 8. Extract Bundle ID + Team ID
+        # Fail immediately if corrupted
+        security cms -D -i profile.mobileprovision | grep UUID
+
+        mv profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+    # 8. Extract Bundle ID & Team ID (SAFE)
     - name: Extract identifiers
       working-directory: ios
       run: |
-        BUNDLE_ID=$(xcodebuild -showBuildSettings -workspace alkhafji.xcworkspace -scheme alkhafji | grep PRODUCT_BUNDLE_IDENTIFIER | awk '{print $3}')
-        TEAM_ID=$(xcodebuild -showBuildSettings -workspace alkhafji.xcworkspace -scheme alkhafji | grep DEVELOPMENT_TEAM | awk '{print $3}')
+        BUNDLE_ID=$(xcodebuild \
+          -workspace alkhafji.xcworkspace \
+          -scheme alkhafji \
+          -sdk iphoneos \
+          -showBuildSettings \
+          | awk -F " = " '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' \
+          | head -n 1 | tr -d '\r')
 
-        echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
-        echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
+        TEAM_ID=$(xcodebuild \
+          -workspace alkhafji.xcworkspace \
+          -scheme alkhafji \
+          -sdk iphoneos \
+          -showBuildSettings \
+          | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' \
+          | head -n 1 | tr -d '\r')
 
-    # 9. Generate ExportOptions.plist dynamically
+        echo "BUNDLE_ID=$BUNDLE_ID" >> "$GITHUB_ENV"
+        echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
+
+    # 9. Generate ExportOptions.plist
     - name: Generate ExportOptions.plist
       working-directory: ios
       run: |
         sed \
-          -e "s|\${BUNDLE_ID}|$BUNDLE_ID|g" \
-          -e "s|\${TEAM_ID}|$TEAM_ID|g" \
+          -e "s|\${BUNDLE_ID}|${BUNDLE_ID}|g" \
+          -e "s|\${TEAM_ID}|${TEAM_ID}|g" \
           ExportOptions.plist > ExportOptions.generated.plist
 
-    # 10. Build + Archive
+    # 10. Archive
     - name: Archive App
       working-directory: ios
       run: |
@@ -87,7 +104,7 @@ jobs:
           PROVISIONING_PROFILE_SPECIFIER="alkhafji-appstore-distribution-profile" \
           | xcpretty
 
-    # 11. Export IPA (NO xcpretty — see real errors)
+    # 11. Export IPA
     - name: Export IPA
       working-directory: ios
       run: |
