@@ -3,20 +3,24 @@
  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>method</key>
-    <string>app-store</string>
-    <key>signingStyle</key>
-    <string>manual</string>
-    <key>compileBitcode</key>
-    <false/>
-    <key>stripSwiftSymbols</key>
-    <true/>
-    <key>signingCertificate</key>
-    <string>Apple Distribution</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.your.bundle.id</key>
-        <string>alkhafji-appstore-distribution-profile</string>
-    </dict>
+
+  <key>method</key>
+  <string>app-store</string>
+
+  <key>signingStyle</key>
+  <string>manual</string>
+
+  <key>teamID</key>
+  <string>${TEAM_ID}</string>
+
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>${BUNDLE_ID}</key>
+    <string>alkhafji-appstore-distribution-profile</string>
+  </dict>
+
+  <key>uploadSymbols</key>
+  <true/>
+
 </dict>
 </plist>

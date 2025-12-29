@@ -12,92 +12,95 @@ jobs:
       CI: "true"
 
     steps:
-      # 1. Checkout repository
-      - uses: actions/checkout@v4
+    # 1. Checkout
+    - uses: actions/checkout@v4
 
-      # 2. Setup Node and install dependencies
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-      - run: npm ci --legacy-peer-deps
+    # 2. Node setup
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "lts/*"
+    - run: npm ci --legacy-peer-deps
 
-      # 3. Setup Ruby and install CocoaPods & xcpretty
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.2"
-      - run: gem install cocoapods xcpretty
+    # 3. Ruby + CocoaPods
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "3.2"
+    - run: gem install cocoapods xcpretty
 
-      # 4. Install iOS Pods
-      - name: Install iOS Pods
-        working-directory: ios
-        run: |
-          pod install --repo-update
+    # 4. Pods
+    - name: Install Pods
+      working-directory: ios
+      run: pod install --repo-update
 
-      # 5. Clean DerivedData to avoid caching issues
-      - name: Clean DerivedData
-        run: rm -rf ~/Library/Developer/Xcode/DerivedData
+    # 5. Clean DerivedData
+    - run: rm -rf ~/Library/Developer/Xcode/DerivedData
 
-      # 6. Setup Keychain and import Apple Certificate
-      - name: Import Apple Distribution Certificate
-        run: |
-          security create-keychain -p "" build.keychain
-          security unlock-keychain -p "" build.keychain
-          security set-keychain-settings -t 3600 -l build.keychain
-          security list-keychains -s build.keychain
+    # 6. Import Distribution Certificate
+    - name: Import Apple Certificate
+      run: |
+        security create-keychain -p "" build.keychain
+        security unlock-keychain -p "" build.keychain
+        security set-keychain-settings -t 3600 -l build.keychain
+        security list-keychains -s build.keychain
 
-          echo "${{ secrets.IOS_CERT_BASE64 }}" | base64 --decode > ios_dist.p12
+        echo "${{ secrets.IOS_CERT_BASE64 }}" | base64 --decode > dist.p12
+        security import dist.p12 -k build.keychain -P "${{ secrets.IOS_CERT_PASSWORD }}" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
 
-          security import ios_dist.p12 \
-            -k build.keychain \
-            -P "${{ secrets.IOS_CERT_PASSWORD }}" \
-            -T /usr/bin/codesign
+    # 7. Install Provisioning Profile
+    - name: Install Provisioning Profile
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode \
+          > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-          security set-key-partition-list -S apple-tool:,apple: \
-            -s -k "" build.keychain
+    # 8. Extract Bundle ID + Team ID
+    - name: Extract identifiers
+      working-directory: ios
+      run: |
+        BUNDLE_ID=$(xcodebuild -showBuildSettings -workspace alkhafji.xcworkspace -scheme alkhafji | grep PRODUCT_BUNDLE_IDENTIFIER | awk '{print $3}')
+        TEAM_ID=$(xcodebuild -showBuildSettings -workspace alkhafji.xcworkspace -scheme alkhafji | grep DEVELOPMENT_TEAM | awk '{print $3}')
 
-      # 7. Install Provisioning Profile
-      - name: Install Provisioning Profile
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode \
-            > ~/Library/MobileDevice/Provisioning\ Profiles/alkhafji-appstore-distribution-profile.mobileprovision
+        echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
+        echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
 
-      # 8. Build & Archive IPA (Manual Signing) with xcpretty
-      - name: Build & Archive IPA
-        working-directory: ios
-        run: |
-          set -e
+    # 9. Generate ExportOptions.plist dynamically
+    - name: Generate ExportOptions.plist
+      working-directory: ios
+      run: |
+        sed \
+          -e "s|\${BUNDLE_ID}|$BUNDLE_ID|g" \
+          -e "s|\${TEAM_ID}|$TEAM_ID|g" \
+          ExportOptions.plist > ExportOptions.generated.plist
 
-          mkdir -p build
+    # 10. Build + Archive
+    - name: Archive App
+      working-directory: ios
+      run: |
+        xcodebuild archive \
+          -workspace alkhafji.xcworkspace \
+          -scheme alkhafji \
+          -configuration Release \
+          -archivePath build/alkhafji.xcarchive \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
+          PROVISIONING_PROFILE_SPECIFIER="alkhafji-appstore-distribution-profile" \
+          | xcpretty
 
-          echo "Cleaning project..."
-          xcodebuild clean \
-            -workspace alkhafji.xcworkspace \
-            -scheme alkhafji \
-            -configuration Release | xcpretty
+    # 11. Export IPA (NO xcpretty — see real errors)
+    - name: Export IPA
+      working-directory: ios
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath build/alkhafji.xcarchive \
+          -exportOptionsPlist ExportOptions.generated.plist \
+          -exportPath build
 
-          echo "Archiving project..."
-          xcodebuild archive \
-            -workspace alkhafji.xcworkspace \
-            -scheme alkhafji \
-            -configuration Release \
-            -archivePath $PWD/build/alkhafji.xcarchive \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="alkhafji-appstore-distribution-profile" | xcpretty
+        ls -la build
 
-          echo "Exporting IPA..."
-          xcodebuild -exportArchive \
-            -archivePath $PWD/build/alkhafji.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath $PWD/build | xcpretty
-
-          echo "Files in build folder:"
-          ls -la build
-
-      # 9. Upload IPA Artifact
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: ios/build/*.ipa
-          if-no-files-found: error
+    # 12. Upload Artifact
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ios-ipa
+        path: ios/build/*.ipa
+        if-no-files-found: error
