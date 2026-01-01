@@ -104,6 +104,8 @@ jobs:
       - name: Archive App
         working-directory: ios
         run: |
+          mkdir -p build
+
           xcodebuild archive \
             -workspace alkhafji.xcworkspace \
             -scheme alkhafji \
