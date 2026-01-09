@@ -13,22 +13,22 @@ jobs:
       CI: "true"
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout
       - uses: actions/checkout@v4
 
-      # 2. Setup Node
+      # 2. Node
       - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
       - run: npm ci --legacy-peer-deps
 
-      # 3. Setup Ruby & CocoaPods
+      # 3. Ruby + CocoaPods
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
       - run: gem install cocoapods xcpretty
 
-      # 4. Install Pods
+      # 4. Pods
       - name: Install Pods
         working-directory: ios
         run: pod install --repo-update
@@ -36,17 +36,17 @@ jobs:
       # 5. Clean DerivedData
       - run: rm -rf ~/Library/Developer/Xcode/DerivedData
 
-      # 6. Import Apple Certificate
+      # 6. Import Apple Distribution Certificate
       - name: Import Apple Certificate
         run: |
-          security create-keychain -p "" build.keychain
-          security unlock-keychain -p "" build.keychain
-          security set-keychain-settings -t 3600 -l build.keychain
-          security list-keychains -s build.keychain
+          security create-keychain -p "" ios-build.keychain
+          security unlock-keychain -p "" ios-build.keychain
+          security set-keychain-settings -t 3600 -l ios-build.keychain
+          security list-keychains -s ios-build.keychain
 
           echo "${{ secrets.IOS_CERT_BASE64 }}" | base64 --decode > dist.p12
-          security import dist.p12 -k build.keychain -P "${{ secrets.IOS_CERT_PASSWORD }}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          security import dist.p12 -k ios-build.keychain -P "${{ secrets.IOS_CERT_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" ios-build.keychain
 
       # 7. Install Provisioning Profile
       - name: Install Provisioning Profile
@@ -55,32 +55,42 @@ jobs:
           echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
           mv profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      # 8. Extract Bundle ID & Team ID reliably
+      # 8. Extract REAL Bundle ID & Team ID (authoritative)
       - name: Extract Bundle ID & Team ID
         working-directory: ios
         run: |
-          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" alkhafji/Info.plist)
-          TEAM_ID=$(xcodebuild -workspace alkhafji.xcworkspace -scheme alkhafji -showBuildSettings \
-                    | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' | head -n1)
+          SETTINGS=$(xcodebuild \
+            -workspace alkhafji.xcworkspace \
+            -scheme alkhafji \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings)
+
+          BUNDLE_ID=$(echo "$SETTINGS" | awk -F " = " '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' | head -n1)
+          TEAM_ID=$(echo "$SETTINGS" | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' | head -n1)
+
+          if [[ -z "$BUNDLE_ID" || "$BUNDLE_ID" == *"$("* ]]; then
+            echo "Invalid Bundle ID: $BUNDLE_ID"
+            exit 1
+          fi
+
           echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
           echo "TEAM_ID=$TEAM_ID" >> $GITHUB_ENV
+
           echo "Bundle ID: $BUNDLE_ID"
           echo "Team ID: $TEAM_ID"
 
       # 9. Extract Provisioning Profile UUID
       - name: Extract Provisioning Profile UUID
         run: |
-          PROFILE_UUID=$(grep -aA1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision \
+          PROFILE_UUID=$(grep -aA1 "<key>UUID</key>" \
+            ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision \
             | grep string | sed -E 's/.*<string>(.*)<\/string>/\1/')
+
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "Profile UUID: $PROFILE_UUID"
 
-      # 10. List imported signing identities (for verification)
-      - name: List Code Signing Identities
-        run: |
-          security find-identity -p codesigning -v
-
-      # 11. Generate ExportOptions.plist dynamically
+      # 10. Generate ExportOptions.plist (CORRECT)
       - name: Generate ExportOptions.plist
         working-directory: ios
         run: |
@@ -88,42 +98,49 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-           <plist version="1.0">
-           <dict>
-           <key>method</key>
-           <string>app-store-connect</string>
-           <key>signingStyle</key>
-           <string>manual</string>
-           <key>teamID</key>
-           <string>${TEAM_ID}</string>
-           <key>provisioningProfiles</key>
-           <dict>
-           <key>${BUNDLE_ID}</key>
-           <string>${PROFILE_UUID}</string>
-           </dict>
-           <key>signingCertificate</key>
-           <string>Apple Distribution</string>
-           </dict>
-           </plist>
-           EOF
+          <plist version="1.0">
+          <dict>
+          <key>method</key>
+          <string>app-store-connect</string>
 
-      # 12. Archive App
+          <key>signingStyle</key>
+          <string>manual</string>
+
+          <key>teamID</key>
+          <string>${TEAM_ID}</string>
+
+          <key>signingCertificate</key>
+          <string>Apple Distribution</string>
+
+          <key>provisioningProfiles</key>
+          <dict>
+            <key>${BUNDLE_ID}</key>
+            <string>${PROFILE_UUID}</string>
+          </dict>
+          </dict>
+          </plist>
+          EOF
+
+          cat ExportOptions.generated.plist
+
+      # 11. Archive App (DO NOT FORCE PROFILE)
       - name: Archive App
         working-directory: ios
         run: |
           mkdir -p build
+
           xcodebuild archive \
             -workspace alkhafji.xcworkspace \
             -scheme alkhafji \
             -sdk iphoneos \
             -configuration Release \
             -archivePath build/alkhafji.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             | xcpretty
 
-      # 13. Export IPA
+      # 12. Export IPA
       - name: Export IPA
         working-directory: ios
         run: |
@@ -131,9 +148,10 @@ jobs:
             -archivePath build/alkhafji.xcarchive \
             -exportOptionsPlist ExportOptions.generated.plist \
             -exportPath build
+
           ls -la build
 
-      # 14. Upload IPA Artifact
+      # 13. Upload Artifact
       - uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
