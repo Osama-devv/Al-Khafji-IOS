@@ -55,7 +55,7 @@ jobs:
           echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
           mv profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      # 8. Extract REAL Bundle ID & Team ID (authoritative)
+      # 8. Extract Bundle ID & Team ID (FIXED)
       - name: Extract Bundle ID & Team ID
         working-directory: ios
         run: |
@@ -69,8 +69,8 @@ jobs:
           BUNDLE_ID=$(echo "$SETTINGS" | awk -F " = " '/PRODUCT_BUNDLE_IDENTIFIER/ {print $2}' | head -n1)
           TEAM_ID=$(echo "$SETTINGS" | awk -F " = " '/DEVELOPMENT_TEAM/ {print $2}' | head -n1)
 
-          if [[ -z "$BUNDLE_ID" || "$BUNDLE_ID" == *"$("* ]]; then
-            echo "Invalid Bundle ID: $BUNDLE_ID"
+          if [[ -z "$BUNDLE_ID" || "$BUNDLE_ID" == *'$('* ]]; then
+            echo "Invalid Bundle ID detected: $BUNDLE_ID"
             exit 1
           fi
 
@@ -90,7 +90,7 @@ jobs:
           echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
           echo "Profile UUID: $PROFILE_UUID"
 
-      # 10. Generate ExportOptions.plist (CORRECT)
+      # 10. Generate ExportOptions.plist
       - name: Generate ExportOptions.plist
         working-directory: ios
         run: |
@@ -100,30 +100,30 @@ jobs:
           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-          <key>method</key>
-          <string>app-store-connect</string>
+            <key>method</key>
+            <string>app-store-connect</string>
 
-          <key>signingStyle</key>
-          <string>manual</string>
+            <key>signingStyle</key>
+            <string>manual</string>
 
-          <key>teamID</key>
-          <string>${TEAM_ID}</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
 
-          <key>signingCertificate</key>
-          <string>Apple Distribution</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
 
-          <key>provisioningProfiles</key>
-          <dict>
-            <key>${BUNDLE_ID}</key>
-            <string>${PROFILE_UUID}</string>
-          </dict>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${BUNDLE_ID}</key>
+              <string>${PROFILE_UUID}</string>
+            </dict>
           </dict>
           </plist>
           EOF
 
           cat ExportOptions.generated.plist
 
-      # 11. Archive App (DO NOT FORCE PROFILE)
+      # 11. Archive App (PROFILE EXPLICITLY BOUND)
       - name: Archive App
         working-directory: ios
         run: |
@@ -138,6 +138,7 @@ jobs:
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
             | xcpretty
 
       # 12. Export IPA
